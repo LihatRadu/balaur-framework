@@ -1,10 +1,16 @@
 package main
 
 import (
-    "fmt"
-    "net/http"
-    "github.com/yuin/gopher-lua"
+	"embed"
+	"fmt"
+	"net/http"
+
+	"github.com/yuin/gopher-lua"
 )
+
+//go:embed lua/*.lua
+var luaScripts embed.FS
+
 
 func executeLuaScript(script string) (string, error) {
     L := lua.NewState()
@@ -20,10 +26,8 @@ func executeLuaScript(script string) (string, error) {
 
 func main() {
     http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        luaScript := `
-            return "Hello from Lua!"
-        `
-        result, err := executeLuaScript(luaScript)
+        
+        result, err := executeLuaScript("lua/balaur.lua")
         if err != nil {
             http.Error(w, err.Error(), http.StatusInternalServerError)
             return
