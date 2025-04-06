@@ -1,13 +1,19 @@
 package main
 
 import (
+	"balaur/config"
+	"balaur/database"
 	"embed"
 	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
 
 	"github.com/yuin/gopher-lua"
+
+//	"balaur-framework/config"
+//	"balaur-framework/database"
 )
 
 //go:embed templates/*.html.lua
@@ -99,27 +105,75 @@ func parseTemplate(template string, L *lua.LState) string {
 	return output
 }
 
+func homeHandler(w http.ResponseWriter, r *http.Request)  {
+    if r.URL.Path != "/" {
+        http.NotFound(w,r)
+        return
+    }
+
+    data := map[string] interface{}{
+        "title": "Balaur template",
+        "greeting": "Balaur reveals!",
+        "items":  []string{"Item 1", "Item 2", "Item 3"},
+    }
+
+    result, err := executeTemplate("templates/template.html.lua", data)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "text/html")
+    fmt.Fprintf(w, result)
+}
+
+func usersHandler(w http.ResponseWriter, r *http.Request)  {
+    rows, err := config.DB.Query("SELECT id, username, email FROM users")
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    defer rows.Close()
+
+    var users []database.User
+
+    for rows.Next(){
+        var user database.User
+        if err := rows.Scan(&user.ID, &user.Username, &user.Email); err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+
+        users = append(users, user)
+    }
+
+// Data to pass to the template
+	data := map[string]interface{}{
+		"title": "User List",
+		"users": users,
+	}
+
+	// Execute the template
+	result, err := executeTemplate("templates/users.html.lua", data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html")
+	fmt.Fprintf(w, result)
+}
+
 func main() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Data to pass to the template
-		data := map[string]interface{}{
-			"title":    "My Lua Template",
-			"greeting": "Hello, World!",
-			"items":    []string{"Item 1", "Item 2", "Item 3"},
-		}
+    config.InitDB()
+    defer config.DB.Close()
 
-		// Execute the template
-		result, err := executeTemplate("templates/template.html.lua", data)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+    if err := database.CreateUseerTable(&config.DB); err != nil {
+        log.Fatalf("Failed to create user table: %v", err)
+    }
 
-		// Write the result to the response
-		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, result)
-	})
+    config.SetupRoutes()
 
-	fmt.Println("Server started at :8080")
+    fmt.Println("Server started at :8080")
 	http.ListenAndServe(":8080", nil)
 }
