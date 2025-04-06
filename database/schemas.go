@@ -26,7 +26,7 @@ func GetUserByID(db *sql.DB, id int) (*User, error) {
 	user := &User{}
 	err := db.QueryRow("SELECT id, username, email FROM users WHERE id = ?", id).Scan(
 		&user.ID,
-		&user.Username,
+		&user.Name,
 		&user.Email,
 	)
 	if err != nil {

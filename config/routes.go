@@ -1,19 +1,11 @@
 package config
 
-import (
-	"net/http"
+import "net/http"
 
-)
+func SetupRoutes() {
+	http.HandleFunc("/", homeHandler)
+	http.HandleFunc("/users", usersHandler)
 
-func SetupRoutes()  {
-    
-    http.HandleFunc("/", homeHandler)
-    http.HandleFunc("/users", usersHandler)
-
-
-    fs := http.FileServer(http.Dir("static"))
+	fs := http.FileServer(http.Dir("static"))
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 }
-
-func homeHandler(w http.ResponseWriter, r *http.Request){}
-func usersHandler(w http.ResponseWriter, r *http.Request){}
